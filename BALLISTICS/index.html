@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Advanced external ballistics calculator. Compute firing solutions with elevation, windage, and MOA corrections for any firearm, caliber, and environmental condition.">
+    <title>BALLISTICS CALCULATOR — Firing Solution Computer</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#060a12">
+    <link rel="apple-touch-icon" href="icons/icon-512.png">
+</head>
+<body>
+<div id="app">
+
+    <!-- ════════════════════════ HEADER ════════════════════════ -->
+    <header>
+        <div class="header-brand">
+            <div class="header-logo">⊕</div>
+            <span class="header-title">BALL<span>ISTICS</span></span>
+        </div>
+        <div class="header-stats" id="header-stats">
+            <div class="header-stat">
+                <span class="header-stat-label">Zero Range</span>
+                <span class="header-stat-value" id="hdr-zero">—</span>
+            </div>
+            <div class="header-stat">
+                <span class="header-stat-label">Density Alt</span>
+                <span class="header-stat-value" id="hdr-da">—</span>
+            </div>
+            <div class="header-stat">
+                <span class="header-stat-label">Supersonic</span>
+                <span class="header-stat-value" id="hdr-super">—</span>
+            </div>
+            <div class="header-stat">
+                <span class="header-stat-label">Drag Model</span>
+                <span class="header-stat-value" id="hdr-model">—</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- ════════════════════════ LAYOUT ════════════════════════ -->
+    <div class="layout">
+
+        <!-- ══════════════ SIDEBAR — INPUT PANEL ══════════════ -->
+        <aside class="sidebar" id="sidebar">
+
+            <!-- ── SECTION 1: Firearm & Caliber ── -->
+            <div class="input-section">
+                <div class="section-header active" id="sh-firearm" onclick="toggleSection('firearm')">
+                    <span class="section-icon">🔫</span>
+                    <span class="section-title">Firearm &amp; Caliber</span>
+                    <span class="section-chevron">▲</span>
+                </div>
+                <div class="section-body open" id="sb-firearm">
+
+                    <div class="form-group">
+                        <label for="firearm-type">Firearm Type</label>
+                        <select id="firearm-type" onchange="onFirearmTypeChange()"></select>
+                    </div>
+
+                    <!-- ── PRESET caliber picker ── -->
+                    <div id="preset-caliber-group" style="display:flex;flex-direction:column;gap:14px;">
+                        <div class="form-group">
+                            <label for="caliber-select">Caliber / Load</label>
+                            <select id="caliber-select" onchange="onCaliberChange()"></select>
+                        </div>
+                    </div>
+
+                    <!-- ── CUSTOM firearm input fields (hidden until custom mode) ── -->
+                    <div id="custom-firearm-group" style="display:none;flex-direction:column;gap:14px;">
+                        <div class="custom-badge">⊕ CUSTOM CONFIGURATION</div>
+                        <div class="form-group">
+                            <label for="custom-sys-name">System / Platform Name</label>
+                            <input type="text" id="custom-sys-name"
+                                   placeholder="e.g. AR-15 Custom Build" value="Custom Firearm">
+                        </div>
+                        <div class="form-group">
+                            <label for="custom-cal-name">Caliber Designation</label>
+                            <input type="text" id="custom-cal-name"
+                                   placeholder="e.g. .300 BLK, 6.5 PRC, 8.6 BLK" value=".308 Win">
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="custom-weight">Bullet Weight (gr)</label>
+                                <input type="number" id="custom-weight" min="10" max="2000" step="1" value="175"
+                                       oninput="updateCustomBulletStats()">
+                            </div>
+                            <div class="form-group">
+                                <label for="custom-diameter">Diameter (in)</label>
+                                <input type="number" id="custom-diameter"
+                                       min="0.100" max="0.750" step="0.001" value="0.308"
+                                       oninput="updateCustomBulletStats()">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ── Shared bullet stat pills (updated by both modes) ── -->
+                    <div class="bullet-stats" id="bullet-stats">
+                        <div class="bullet-stat">
+                            <span class="bullet-stat-label">Weight</span>
+                            <span class="bullet-stat-value" id="bs-weight">—</span>
+                        </div>
+                        <div class="bullet-stat">
+                            <span class="bullet-stat-label">Diameter</span>
+                            <span class="bullet-stat-value" id="bs-dia">—</span>
+                        </div>
+                        <div class="bullet-stat">
+                            <span class="bullet-stat-label">Model</span>
+                            <span class="bullet-stat-value" id="bs-model">—</span>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="muzzle-vel">Muzzle Velocity (fps)</label>
+                        <input type="number" id="muzzle-vel" min="200" max="5000" step="10" value="2600">
+                    </div>
+
+                    <div class="bc-row">
+                        <div class="form-group">
+                            <label for="bc-value" id="bc-label">Ballistic Coefficient (G7)</label>
+                            <input type="number" id="bc-value" min="0.050" max="2.000" step="0.001" value="0.264">
+                        </div>
+                        <div class="form-group">
+                            <label for="drag-model">Drag Model</label>
+                            <select id="drag-model" onchange="onDragModelChange()">
+                                <option value="G7">G7</option>
+                                <option value="G1">G1</option>
+                            </select>
+                        </div>
+                    </div>
+
+                </div>
+
+            </div>
+
+            <!-- ── SECTION 2: Optic ── -->
+            <div class="input-section">
+                <div class="section-header active" id="sh-optic" onclick="toggleSection('optic')">
+                    <span class="section-icon">🔭</span>
+                    <span class="section-title">Optic / Scope</span>
+                    <span class="section-chevron">▲</span>
+                </div>
+                <div class="section-body open" id="sb-optic">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="scope-height">Scope Height (in)</label>
+                            <input type="number" id="scope-height" min="0.5" max="5" step="0.1" value="1.5">
+                        </div>
+                        <div class="form-group">
+                            <label for="optic-type">Optic Type</label>
+                            <select id="optic-type">
+                                <option value="scope">Rifle Scope</option>
+                                <option value="lpvo">LPVO</option>
+                                <option value="red_dot">Red Dot</option>
+                                <option value="iron">Iron Sights</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Adjustment Unit</label>
+                        <div style="font-family:var(--font-mono);font-size:13px;color:var(--accent);padding:8px 10px;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius);">
+                            MOA (Minute of Angle)
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ── SECTION 3: Zero Conditions ── -->
+            <div class="input-section">
+                <div class="section-header active" id="sh-zero" onclick="toggleSection('zero')">
+                    <span class="section-icon">⊙</span>
+                    <span class="section-title">Zero Conditions</span>
+                    <span class="section-chevron">▲</span>
+                </div>
+                <div class="section-body open" id="sb-zero">
+                    <div class="form-group">
+                        <label for="zero-range">Zero Range (yds)</label>
+                        <input type="number" id="zero-range" min="10" max="1000" step="5" value="100">
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="zero-temp">Temperature (°F)</label>
+                            <input type="number" id="zero-temp" min="-40" max="130" value="59">
+                        </div>
+                        <div class="form-group">
+                            <label for="zero-alt">Altitude (ft)</label>
+                            <input type="number" id="zero-alt" min="0" max="20000" step="100" value="0">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="zero-humid">Humidity</label>
+                        <div class="range-row">
+                            <input type="range" id="zero-humid" min="0" max="100" value="50"
+                                   oninput="document.getElementById('zero-humid-val').textContent=this.value+'%'">
+                            <span class="range-value" id="zero-humid-val">50%</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ── SECTION 4: Current Conditions ── -->
+            <div class="input-section">
+                <div class="section-header active" id="sh-curr" onclick="toggleSection('curr')">
+                    <span class="section-icon">🌬️</span>
+                    <span class="section-title">Current Conditions</span>
+                    <span class="section-chevron">▲</span>
+                </div>
+                <div class="section-body open" id="sb-curr">
+
+                    <!-- Wind -->
+                    <div class="form-group">
+                        <label>Wind</label>
+                        <div class="wind-section">
+                            <div class="clock-container">
+                                <svg class="clock-svg" id="wind-clock" width="130" height="130"
+                                     viewBox="0 0 130 130" onclick="onClockClick(event)"></svg>
+                                <span class="clock-label">Click to set direction</span>
+                            </div>
+                            <div class="wind-inputs">
+                                <div class="form-group">
+                                    <label for="wind-speed">Speed (mph)</label>
+                                    <input type="number" id="wind-speed" min="0" max="60" step="1" value="10">
+                                </div>
+                                <div class="form-group">
+                                    <label for="wind-clock-input">Clock Position</label>
+                                    <input type="number" id="wind-clock-input" min="0" max="12" step="1" value="3"
+                                           oninput="setWindClock(parseInt(this.value)||0)" placeholder="0=none">
+                                </div>
+                                <div id="wind-desc" style="font-size:11px;color:var(--text-dim);letter-spacing:0.5px;">
+                                    → Wind from 3 o'clock (right crosswind)
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="curr-temp">Temperature (°F)</label>
+                            <input type="number" id="curr-temp" min="-40" max="130" value="59">
+                        </div>
+                        <div class="form-group">
+                            <label for="curr-alt">Altitude (ft)</label>
+                            <input type="number" id="curr-alt" min="0" max="20000" step="100" value="0">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="curr-humid">Humidity</label>
+                        <div class="range-row">
+                            <input type="range" id="curr-humid" min="0" max="100" value="50"
+                                   oninput="document.getElementById('curr-humid-val').textContent=this.value+'%'">
+                            <span class="range-value" id="curr-humid-val">50%</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ── SECTION 5: Range Settings ── -->
+            <div class="input-section">
+                <div class="section-header active" id="sh-range" onclick="toggleSection('range')">
+                    <span class="section-icon">📏</span>
+                    <span class="section-title">Range Settings</span>
+                    <span class="section-chevron">▲</span>
+                </div>
+                <div class="section-body open" id="sb-range">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="max-range">Max Range (yds)</label>
+                            <input type="number" id="max-range" min="50" max="2500" step="50" value="1000">
+                        </div>
+                        <div class="form-group">
+                            <label for="step-yds">Step Size (yds)</label>
+                            <select id="step-yds">
+                                <option value="5">5 yds</option>
+                                <option value="10" selected>10 yds</option>
+                                <option value="25">25 yds</option>
+                                <option value="50">50 yds</option>
+                                <option value="100">100 yds</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Calculate Button -->
+            <button class="btn-calculate" id="calc-btn" onclick="calculate()">
+                ⊕ &nbsp;COMPUTE FIRING SOLUTION
+            </button>
+
+        </aside><!-- /sidebar -->
+
+        <!-- ══════════════ MAIN CONTENT AREA ══════════════ -->
+        <main class="main-content" id="main-content">
+
+            <!-- Summary bar (populated after calculation) -->
+            <div class="summary-bar" id="summary-bar" style="display:none;"></div>
+
+            <!-- Trajectory chart -->
+            <div class="chart-section" id="chart-section" style="display:none;">
+                <div class="section-label">Trajectory</div>
+                <div class="chart-wrapper">
+                    <svg id="trajectory-chart" width="100%" height="220" viewBox="0 0 1000 220"
+                         preserveAspectRatio="none"></svg>
+                </div>
+            </div>
+
+            <!-- Firing solution table -->
+            <div class="table-section" id="table-section">
+                <div class="table-header">
+                    <div class="section-label" style="margin:0;">Firing Solution</div>
+                    <div class="table-actions" id="table-actions" style="display:none;">
+                        <button class="btn-action" onclick="copyCSV()">📋 Copy CSV</button>
+                        <button class="btn-action" onclick="window.print()">🖨️ Print</button>
+                    </div>
+                </div>
+
+                <!-- Empty state -->
+                <div class="empty-state" id="empty-state">
+                    <div class="empty-icon">⊕</div>
+                    <div class="empty-title">No Solution Computed</div>
+                    <div class="empty-sub">Configure your firearm, conditions, and range settings, then press <strong>COMPUTE FIRING SOLUTION</strong>.</div>
+                </div>
+
+                <!-- Table (hidden until computed) -->
+                <div class="table-wrapper" id="table-wrapper" style="display:none;">
+                    <table id="firing-table">
+                        <thead>
+                            <tr>
+                                <th>Range (yds)</th>
+                                <th>Drop (in)</th>
+                                <th title="How many MOA to dial your elevation turret UP">Elevation ↑ (MOA)</th>
+                                <th title="Direction the bullet physically drifted">Wind Drift (in)</th>
+                                <th title="Scope dial correction — OPPOSITE of drift direction. Drift L = Dial →R">Windage Dial (MOA)</th>
+                                <th>Velocity (fps)</th>
+                                <th>Energy (ft·lbs)</th>
+                                <th>TOF (s)</th>
+                                <th>Mach</th>
+                            </tr>
+                        </thead>
+                        <tbody id="table-body"></tbody>
+                    </table>
+                    <div class="regime-legend">
+                        <div class="legend-item"><div class="legend-dot" style="background:#22c55e;"></div>Supersonic (&gt;Mach 1.2)</div>
+                        <div class="legend-item"><div class="legend-dot" style="background:#f59e0b;"></div>Transonic (Mach 0.9–1.2)</div>
+                        <div class="legend-item"><div class="legend-dot" style="background:#ef4444;"></div>Subsonic (&lt;Mach 0.9)</div>
+                        <div class="legend-item"><div class="legend-dot" style="background:#60a5fa;"></div>Zero Range</div>
+                        <div class="legend-item" style="margin-left:auto;color:var(--accent);font-size:9px;letter-spacing:1px;">
+                            WINDAGE = scope dial correction &nbsp;|&nbsp; drift ←L → dial →R &nbsp;|&nbsp; drift →R → dial ←L
+                        </div>
+                    </div>
+                </div>
+
+            </div><!-- /table-section -->
+
+        </main><!-- /main-content -->
+
+    </div><!-- /layout -->
+
+</div><!-- /app -->
+
+<!-- Scripts loaded in dependency order -->
+<script src="js/data.js"></script>
+<script src="js/ballistics.js"></script>
+<script src="js/app.js"></script>
+
+<!-- PWA Service Worker Registration -->
+<script>
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', function() {
+            navigator.serviceWorker.register('./sw.js')
+                .then(function(reg) { console.log('Service Worker registered'); })
+                .catch(function(err) { console.error('Service Worker registration failed:', err); });
+        });
+    }
+</script>
+
+</body>
+</html>

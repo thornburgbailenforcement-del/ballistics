@@ -1,0 +1,17 @@
+{
+  "name": "Ballistics Calculator",
+  "short_name": "Ballistics",
+  "description": "Firing Solution Computer",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#060a12",
+  "theme_color": "#060a12",
+  "icons": [
+    {
+      "src": "./icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
